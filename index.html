@@ -2,77 +2,41 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Buscador de Link de Avaliação - Google</title>
+  <title>Gerador de Link de Busca/Avaliação</title>
   <style>
-    * { box-sizing: border-box; }
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 30px auto;
-      padding: 0 15px;
-      color: #333;
-    }
-    h1 { font-size: 1.4rem; text-align: center; margin-bottom: 20px; }
-    label { font-weight: bold; display: block; margin-bottom: 6px; }
-    input[type="text"] {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 20px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 1rem;
-    }
-    input[type="text"]:focus {
-      border-color: #1a73e8;
-      outline: none;
-    }
-    .result-box {
-      background-color: #f8f9fa;
-      border: 1px solid #e0e0e0;
-      padding: 15px;
-      border-radius: 6px;
-    }
+    body { font-family: sans-serif; max-width: 500px; margin: 40px auto; padding: 20px; }
+    input, button { width: 100%; padding: 12px; margin-top: 8px; font-size: 1rem; }
+    .result { margin-top: 20px; word-break: break-all; }
   </style>
-
-  <!-- Script carregado com parâmetro callback=inicializarAutocomplete -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBw9-hl4lSEO2fSMoICmUhL7_SfJVliU3E&libraries=places&callback=inicializarAutocomplete" async defer></script>
 </head>
 <body>
 
-  <h1>Gerador de Link de Avaliação do Google</h1>
+  <h2>Gerador de Link via Pesquisa Google</h2>
 
-  <label for="buscaEmpresa">1. Digite o nome da empresa:</label>
-  <input type="text" id="buscaEmpresa" placeholder="Ex: Farmácia São João Ponta Grossa...">
+  <label>Nome da Empresa e Cidade:</label>
+  <input type="text" id="empresa" placeholder="Ex: Mercado Silva Ponta Grossa">
 
-  <div class="result-box">
-    <label for="linkReview">2. Link direto de avaliação (clique para selecionar):</label>
-    <input type="text" id="linkReview" readonly placeholder="Selecione uma empresa acima..." onclick="this.select()">
-  </div>
+  <button onclick="gerarLink()">Gerar Link</button>
+
+  <div class="result" id="resultado"></div>
 
   <script>
-    function inicializarAutocomplete() {
-      const inputBusca = document.getElementById('buscaEmpresa');
-      const inputLink = document.getElementById('linkReview');
+    function gerarLink() {
+      const termo = document.getElementById('empresa').value.trim();
+      if (!termo) return;
 
-      const options = {
-        types: ['establishment'],
-        fields: ['place_id', 'name', 'formatted_address']
-      };
+      // Codifica o texto para URL
+      const termoEncoded = encodeURIComponent(termo);
+      
+      // Link de busca direta no Google
+      const urlGoogle = `https://www.google.com/search?q=${termoEncoded}`;
 
-      const autocomplete = new google.maps.places.Autocomplete(inputBusca, options);
-
-      autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace();
-
-        if (place && place.place_id) {
-          const reviewUrl = `https://search.google.com/local/writereview?placeid=${place.place_id}`;
-          inputLink.value = reviewUrl;
-        } else {
-          inputLink.value = '';
-        }
-      });
+      document.getElementById('resultado').innerHTML = `
+        <p><strong>Link de busca direta:</strong></p>
+        <a href="${urlGoogle}" target="_blank">${urlGoogle}</a>
+      `;
     }
   </script>
+
 </body>
 </html>
