@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Empresas Próximas - OpenStreetMap</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 0 15px;
+      color: #333;
+    }
+    h1 { font-size: 1.4rem; text-align: center; }
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-bottom: 15px;
+    }
+    button:hover { background-color: #0056b3; }
+    select, input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+    label { font-weight: bold; display: block; margin-bottom: 5px; }
+    .status { font-size: 0.9rem; color: #666; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+  <h1>Empresas Próximas (Sem API Key)</h1>
+
+  <button onclick="obterLocalizacaoEBuscar()">Buscar Empresas Próximas</button>
+  <div id="status" class="status"></div>
+
+  <label for="empresasSelect">1. Selecione a empresa:</label>
+  <select id="empresasSelect" disabled onchange="atualizarLinkReview()">
+    <option value="">Clique no botão acima para buscar...</option>
+  </select>
+
+  <label for="linkReview">2. Link de busca/avaliação no Google:</label>
+  <input type="text" id="linkReview" readonly placeholder="O link aparecerá aqui..." onclick="this.select()">
+
+  <script>
+    function obterLocalizacaoEBuscar() {
+      const statusDiv = document.getElementById('status');
+      
+      if (!navigator.geolocation) {
+        statusDiv.innerText = "Geolocalização não é suportada pelo seu navegador.";
+        return;
+      }
+
+      statusDiv.innerText = "Obtendo localização do GPS...";
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          statusDiv.innerText = "Buscando empresas próximas via OpenStreetMap...";
+
+          buscarEmpresasOverpass(lat, lng);
+        },
+        (error) => {
+          statusDiv.innerText = "Erro ao obter localização: " + error.message;
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    function buscarEmpresasOverpass(lat, lng) {
+      const statusDiv = document.getElementById('status');
+      const select = document.getElementById('empresasSelect');
+
+      // Consulta no Overpass API buscando nós e caminhos do tipo comércio/serviço num raio de 1km
+      const radius = 1000;
+      const query = `
+        [out:json];
+        (
+          node["name"]["amenity"](around:${radius},${lat},${lng});
+          node["name"]["shop"](around:${radius},${lat},${lng});
+          way["name"]["amenity"](around:${radius},${lat},${lng});
+          way["name"]["shop"](around:${radius},${lat},${lng});
+        );
+        out center 30;
+      `;
+
+      fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        body: query
+      })
+      .then(response => response.json())
+      .then(data => {
+        const elements = data.elements;
+
+        if (elements && elements.length > 0) {
+          select.innerHTML = '<option value="">-- Escolha uma empresa --</option>';
+          
+          elements.forEach(place => {
+            const name = place.tags.name;
+            const street = place.tags["addr:street"] || "";
+            const city = place.tags["addr:city"] || "";
+            const fullAddress = [street, city].filter(Boolean).join(", ");
+
+            const option = document.createElement('option');
+            // Salva nome e endereço no value do option
+            option.value = JSON.stringify({ name: name, address: fullAddress });
+            option.textContent = fullAddress ? `${name} (${fullAddress})` : name;
+            select.appendChild(option);
+          });
+
+          select.disabled = false;
+          statusDiv.innerText = `${elements.length} empresas encontradas nas proximidades!`;
+        } else {
+          statusDiv.innerText = "Nenhuma empresa cadastrada encontrada nas proximidades.";
+          select.disabled = true;
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        statusDiv.innerText = "Erro ao buscar dados do OpenStreetMap.";
+      });
+    }
+
+    function atualizarLinkReview() {
+      const select = document.getElementById('empresasSelect');
+      const inputLink = document.getElementById('linkReview');
+
+      if (select.value) {
+        const placeData = JSON.parse(select.value);
+        // Gera um link de busca direto no Google que abre a ficha da empresa com o modal de avaliação
+        const query = encodeURIComponent(`${placeData.name} ${placeData.address}`);
+        const googleSearchUrl = `https://www.google.com/search?q=${query}`;
+        inputLink.value = googleSearchUrl;
+      } else {
+        inputLink.value = '';
+      }
+    }
+  </script>
+</body>
+</html>
