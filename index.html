@@ -3,150 +3,83 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Empresas Próximas - OpenStreetMap</title>
+  <title>Buscador de Link de Avaliação - Google</title>
   <style>
     * { box-sizing: border-box; }
     body {
       font-family: Arial, sans-serif;
       max-width: 600px;
-      margin: 20px auto;
+      margin: 30px auto;
       padding: 0 15px;
       color: #333;
     }
-    h1 { font-size: 1.4rem; text-align: center; }
-    button {
+    h1 { font-size: 1.4rem; text-align: center; margin-bottom: 20px; }
+    label { font-weight: bold; display: block; margin-bottom: 6px; }
+    input[type="text"] {
       width: 100%;
       padding: 12px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 1rem;
-      cursor: pointer;
-      margin-bottom: 15px;
-    }
-    button:hover { background-color: #0056b3; }
-    select, input {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 15px;
+      margin-bottom: 20px;
       border: 1px solid #ccc;
       border-radius: 6px;
-      font-size: 0.95rem;
+      font-size: 1rem;
     }
-    label { font-weight: bold; display: block; margin-bottom: 5px; }
-    .status { font-size: 0.9rem; color: #666; margin-bottom: 10px; }
+    input[type="text"]:focus {
+      border-color: #1a73e8;
+      outline: none;
+    }
+    .result-box {
+      background-color: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      padding: 15px;
+      border-radius: 6px;
+    }
   </style>
+
+  <!-- Carrega a API do Google Maps com a biblioteca 'places' -->
+  <!-- Substitua 'SUA_CHAVE_API_AQUI' pela sua API Key -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBw9-hl4lSEO2fSMoICmUhL7_SfJVliU3E&libraries=places"></script>
 </head>
 <body>
 
-  <h1>Empresas Próximas (Sem API Key)</h1>
+  <h1>Gerador de Link de Avaliação do Google</h1>
 
-  <button onclick="obterLocalizacaoEBuscar()">Buscar Empresas Próximas</button>
-  <div id="status" class="status"></div>
+  <label for="buscaEmpresa">1. Digite o nome da empresa:</label>
+  <input type="text" id="buscaEmpresa" placeholder="Ex: Farmácia São João Ponta Grossa...">
 
-  <label for="empresasSelect">1. Selecione a empresa:</label>
-  <select id="empresasSelect" disabled onchange="atualizarLinkReview()">
-    <option value="">Clique no botão acima para buscar...</option>
-  </select>
-
-  <label for="linkReview">2. Link de busca/avaliação no Google:</label>
-  <input type="text" id="linkReview" readonly placeholder="O link aparecerá aqui..." onclick="this.select()">
+  <div class="result-box">
+    <label for="linkReview">2. Link direto de avaliação (clique para selecionar):</label>
+    <input type="text" id="linkReview" readonly placeholder="Selecione uma empresa acima..." onclick="this.select()">
+  </div>
 
   <script>
-    function obterLocalizacaoEBuscar() {
-      const statusDiv = document.getElementById('status');
-      
-      if (!navigator.geolocation) {
-        statusDiv.innerText = "Geolocalização não é suportada pelo seu navegador.";
-        return;
-      }
+    function inicializarAutocomplete() {
+      const inputBusca = document.getElementById('buscaEmpresa');
+      const inputLink = document.getElementById('linkReview');
 
-      statusDiv.innerText = "Obtendo localização do GPS...";
+      // Configura o Autocomplete focado em estabelecimentos
+      const options = {
+        types: ['establishment'],
+        fields: ['place_id', 'name', 'formatted_address']
+      };
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          statusDiv.innerText = "Buscando empresas próximas via OpenStreetMap...";
+      const autocomplete = new google.maps.places.Autocomplete(inputBusca, options);
 
-          buscarEmpresasOverpass(lat, lng);
-        },
-        (error) => {
-          statusDiv.innerText = "Erro ao obter localização: " + error.message;
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    }
+      // Quando o usuário seleciona uma empresa na lista suspensa do Google
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
 
-    function buscarEmpresasOverpass(lat, lng) {
-      const statusDiv = document.getElementById('status');
-      const select = document.getElementById('empresasSelect');
-
-      // Consulta no Overpass API buscando nós e caminhos do tipo comércio/serviço num raio de 1km
-      const radius = 50;
-      const query = `
-        [out:json];
-        (
-          node["name"]["amenity"](around:${radius},${lat},${lng});
-          node["name"]["shop"](around:${radius},${lat},${lng});
-          way["name"]["amenity"](around:${radius},${lat},${lng});
-          way["name"]["shop"](around:${radius},${lat},${lng});
-        );
-        out center 30;
-      `;
-
-      fetch('https://overpass-api.de/api/interpreter', {
-        method: 'POST',
-        body: query
-      })
-      .then(response => response.json())
-      .then(data => {
-        const elements = data.elements;
-
-        if (elements && elements.length > 0) {
-          select.innerHTML = '<option value="">-- Escolha uma empresa --</option>';
-          
-          elements.forEach(place => {
-            const name = place.tags.name;
-            const street = place.tags["addr:street"] || "";
-            const city = place.tags["addr:city"] || "";
-            const fullAddress = [street, city].filter(Boolean).join(", ");
-
-            const option = document.createElement('option');
-            // Salva nome e endereço no value do option
-            option.value = JSON.stringify({ name: name, address: fullAddress });
-            option.textContent = fullAddress ? `${name} (${fullAddress})` : name;
-            select.appendChild(option);
-          });
-
-          select.disabled = false;
-          statusDiv.innerText = `${elements.length} empresas encontradas nas proximidades!`;
+        if (place && place.place_id) {
+          // Monta o link no formato direto de writereview
+          const reviewUrl = `https://search.google.com/local/writereview?placeid=${place.place_id}`;
+          inputLink.value = reviewUrl;
         } else {
-          statusDiv.innerText = "Nenhuma empresa cadastrada encontrada nas proximidades.";
-          select.disabled = true;
+          inputLink.value = '';
         }
-      })
-      .catch(err => {
-        console.error(err);
-        statusDiv.innerText = "Erro ao buscar dados do OpenStreetMap.";
       });
     }
 
-    function atualizarLinkReview() {
-      const select = document.getElementById('empresasSelect');
-      const inputLink = document.getElementById('linkReview');
-
-      if (select.value) {
-        const placeData = JSON.parse(select.value);
-        // Gera um link de busca direto no Google que abre a ficha da empresa com o modal de avaliação
-        const query = encodeURIComponent(`${placeData.name} ${placeData.address}`);
-        const googleSearchUrl = `https://www.google.com/search?q=${query}`;
-        inputLink.value = googleSearchUrl;
-      } else {
-        inputLink.value = '';
-      }
-    }
+    // Inicializa o script quando a API do Google Maps carrega
+    google.maps.event.addDomListener(window, 'load', inicializarAutocomplete);
   </script>
 </body>
 </html>
