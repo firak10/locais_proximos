@@ -35,9 +35,8 @@
     }
   </style>
 
-  <!-- Carrega a API do Google Maps com a biblioteca 'places' -->
-  <!-- Substitua 'SUA_CHAVE_API_AQUI' pela sua API Key -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBw9-hl4lSEO2fSMoICmUhL7_SfJVliU3E&libraries=places"></script>
+  <!-- Script carregado com parâmetro callback=inicializarAutocomplete -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=SUA_NOVA_CHAVE_AQUI&libraries=places&callback=inicializarAutocomplete" async defer></script>
 </head>
 <body>
 
@@ -56,7 +55,6 @@
       const inputBusca = document.getElementById('buscaEmpresa');
       const inputLink = document.getElementById('linkReview');
 
-      // Configura o Autocomplete focado em estabelecimentos
       const options = {
         types: ['establishment'],
         fields: ['place_id', 'name', 'formatted_address']
@@ -64,12 +62,10 @@
 
       const autocomplete = new google.maps.places.Autocomplete(inputBusca, options);
 
-      // Quando o usuário seleciona uma empresa na lista suspensa do Google
       autocomplete.addListener('place_changed', () => {
         const place = autocomplete.getPlace();
 
         if (place && place.place_id) {
-          // Monta o link no formato direto de writereview
           const reviewUrl = `https://search.google.com/local/writereview?placeid=${place.place_id}`;
           inputLink.value = reviewUrl;
         } else {
@@ -77,9 +73,6 @@
         }
       });
     }
-
-    // Inicializa o script quando a API do Google Maps carrega
-    google.maps.event.addDomListener(window, 'load', inicializarAutocomplete);
   </script>
 </body>
 </html>
